@@ -1,0 +1,28 @@
+/**
+ * @property {string} flowId
+ * @property {string} flowNodeId
+ */
+ class StepInfo {
+    constructor({flowId, address}) {
+        this.flowId = flowId;
+        this.address = address;
+    }
+}
+
+/**
+ * @property {StepInfo} next
+ * @property {string} processId
+ * @property {string} trigger
+ * @property {*} payload
+ */
+class Message {
+    constructor({next, payload, processId = null, trigger = {}}) {
+        this.next = new StepInfo(next || {});
+        this.processId = processId;
+        this.trigger = trigger;
+        this.payload = payload;
+    }
+}
+
+exports.Message = Message;
+exports.StepInfo = StepInfo;
