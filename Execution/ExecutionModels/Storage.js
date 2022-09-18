@@ -7,17 +7,17 @@ class Storage {
     }
 
     composeKey(key, typeKey) {
-        return `${key}#${typeKey}`;
+        return `${typeKey}#${key}`;
     }
 
-    setValue(key, value) { 
+    async setValue(key, value) { 
         const cKey = this.composeKey(key, this.typeKey);
-        return setValue(key, value)
+        return await setValue(cKey, value)
     }
 
-    getValue(key) { 
+    async getValue(key) { 
         const cKey = this.composeKey(key, this.typeKey);
-        return getValue(key)
+        return await getValue(cKey)
     }
 
 }

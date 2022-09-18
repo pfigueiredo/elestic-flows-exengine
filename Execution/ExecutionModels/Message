@@ -3,9 +3,10 @@
  * @property {string} flowNodeId
  */
  class StepInfo {
-    constructor({flowId, address}) {
+    constructor({flowId, address, remote}) {
         this.flowId = flowId;
         this.address = address;
+        this.remote = !!(remote ?? false)
     }
 }
 

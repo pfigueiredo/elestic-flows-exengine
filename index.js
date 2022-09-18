@@ -1,13 +1,29 @@
 const { Engine } = require("./Execution/Engine");
+const { StepInfo } = require("./Execution/ExecutionModels/Message");
 const { Message } = require("./Execution/ExecutionModels/Message");
 
-const executorVersion = 'v0.1.20220902.2'
+const executorVersion = 'v0.6.20220918.4'
 
 console.log(`engine starting version ${executorVersion}`);
 
-const engine = new Engine();
+function EFlowOk(flowId, obj) {
+    return {
+        ok: true,
+        payload: obj,
+        flowId: flowId
+    }
+}
 
-function Ok(obj) {
+function EFlowError(obj) {
+    return {
+        ok: false,
+        payload: obj,
+        flowId: flowId
+    }
+}
+
+
+function HttpOk(obj) {
     return {
         isBase64Encoded: false,
         statusCode: 200,
@@ -20,7 +36,7 @@ function Ok(obj) {
     }
 }
 
-function Error(statusCode, obj) {
+function HttpError(statusCode, obj) {
     return {
         isBase64Encoded: false,
         statusCode: statusCode,
@@ -33,7 +49,15 @@ function Error(statusCode, obj) {
     }
 }
 
-const handleHttpEvent = async (event, context) => {
+const doInvocation = async (entryPoint, message, engine) => {
+    if (!!entryPoint || !!message?.next) {
+        const retMessage = await engine.execute(message, entryPoint);
+        return engine.getReturnObject() ?? retMessage;
+    } else
+        return null;
+}
+
+const handleHttpEvent = async (event, context, engine) => {
 
     const stage = '/' + (event?.requestContext?.stage ?? 'default');
     let path = event?.path ?? '/'
@@ -51,121 +75,122 @@ const handleHttpEvent = async (event, context) => {
         context: event?.requestContext
     });
 
-    if (!!entryPoint) {
+    const payload = (!!event?.body) ?
+        JSON.parse(event?.body) : { }
 
-        const message = new Message({
-            next: null, 
-            payload: { 
-                event: event, 
-                context: context,
-                body: JSON.parse(event?.body)
-            }, 
-        });
+    const message = new Message({
+        next: null, 
+        event: event, 
+        context: context,
+        payload: payload
+    });
 
-        const retMessage = await engine.execute(message);
-        const returnObj = engine.getReturnObject();
+    const returnObj = await doInvocation(entryPoint, message, engine);
 
+    engine.logger.log('invocation ended');
+    engine.logger.log(returnObj);
+
+    if (!!returnObj) {
         if (returnObj.code > 300) {
-            console.log(returnObj);
-            return Error(returnObj.code, returnObj.body);
+            engine.logger.log(returnObj);
+            return HttpError(returnObj.code, returnObj.body);
         } else
-            return Ok(returnObj.body);
+            return HttpOk(returnObj.body);
 
     } else {
-        return Error(404, { message: `flow not found: ${event?.httpMethod ?? "GET"} ${path}` })
+        return HttpError(404, { message: `flow not found: ${event?.httpMethod ?? "GET"} ${path}` })
     }
-}
+};
+
+const handleEFlowEvent = async function(event, context, engine) {
+    
+    const entryPoint = await engine.prepareExecution({
+        type: "e-flow",
+        method: "ANY",
+        entryPoint: event.entryPoint ?? "default"
+    }, event.processId );
+
+    engine.logger.log('handle e-flow event');
+
+    const message = new Message({
+        ...event.msg, next: null 
+    });
+
+    const returnObj = await doInvocation(entryPoint, message, engine);
+
+    engine.logger.log('invocation ended');
+    engine.logger.log(returnObj);
+
+    if (!!returnObj) {
+        if (returnObj.code > 300) {
+            engine.logger.log(returnObj);
+            return EFlowError(entryPoint.flowId, returnObj.body);
+        } else
+            return EFlowOk(entryPoint.flowId, returnObj.body);
+
+    } else {
+        return EFlowError(entryPoint.flowId, { message: `flow not found: ${event.start ?? "default"}` })
+    }
+};
+
+const handleEFlowStep = async function(event, context, engine) {
+    
+    await engine.prepareFlow(event.flowId, event.processId);
+
+    engine.logger.log('handle e-flow step');
+
+    const next = new StepInfo({
+        flowId: event.flowId,
+        address: event.address
+    });
+
+    const message = new Message({
+        ... event.msg, next: next
+    });
+
+    const returnObj = await doInvocation(null, message, engine);
+
+    engine.logger.log('invocation ended');
+    engine.logger.log(returnObj);
+
+    if (!!returnObj) {
+        if (returnObj.code > 300) {
+            engine.logger.log(returnObj);
+            return EFlowError(event.flowId, returnObj.body);
+        } else
+            return EFlowOk(event.flowId, returnObj.body);
+
+    } else {
+        return EFlowError(event.flowId, { message: `flow not found: ${event.start ?? "default"}` })
+    }
+};
 
 exports.handler = async (event, context) => {
 
-    //console.log(event);    
+    const engine = new Engine();
+    let returnObject = {};
 
-    //TODO: write code to switch trigger type
-    return await handleHttpEvent(event, context);
-}
-
-exports.handler_old = (event, context, callback) => {
-
-    let eventVersion = event.version;
-    let httpMethod = event.httpMethod;
-    let resource = event.resource;
-    let data = JSON.parse(event.body);
-    let query = event.queryStringParameters;
-    let isError = false;
-    let errorMessage = "";
-    let tableName = '';
-    let keyName = '';
-    let operation = null;
-
-    console.log(`Processing event version ${eventVersion} method ${httpMethod}`);
-
-    switch (resource) {
-        case '/flows': 
-            tableName = 'elastic-flows'; 
-            keyName = 'flowId';
-            break;
-        default: 
-            isError = true;
-            tableName = '';
-            errorMessage = `can't determine a resource name from the provided endpoint ${resource}`;
-            break;
-    }
-
-    let dataObject = {};
-
-    switch (httpMethod) {
-        case 'GET': 
-            operation = (!!query && !!query[keyName]) ? 'READ' : 'LIST';             
-            break;
-        case 'PATCH':
-            operation = 'UPDATE';
-            break;
-        case 'POST': 
-            operation = 'SAVE';
-            data = CreateId(data, keyName); 
-            break;
-        case 'PUT': 
-            operation = 'SAVE'; 
-            data = CheckId(data, keyName);
-            break;
-        case 'DELETE': operation = 'DELETE'; break;
-        case 'TRACE': operation = 'PING'; break;
-        case 'OPTIONS': operation = 'ECHO'; break;
-        default:
-            isError = true;
-            errorMessage = `cant determine operation from the provided method: ${httpMethod}`;
-            break;
-
-    }
+    try {
     
-    const operationKey = (!!data) ? data[keyName] : "empty";
-    
-    console.log(`running ${operation} on ${operationKey}`);
+        engine.startEvent();
+        console.log(event);
 
-    switch (operation) {
-        case 'SAVE':
-            PutObject(data, keyName, tableName, callback);
-            break;
-        case 'READ':
-            GetObjectById(query[keyName], keyName, tableName, callback);
-            break;
-        case 'UPDATE':
-            UpdateObject(data, keyName, tableName, callback);
-            break;
-        case 'DELETE':
-            DeleteObjectById(query[keyName], keyName, tableName, callback);
-            break;
-        case 'LIST':
-            GetObjectList(tableName, callback);
-            break;
-        case 'ECHO':
-            callback(null, "GET PATCH POST PUT DELETE TRACE OPTIONS");
-            break;
-        case 'PING':
-            callback(null, "pong");
-            break;
-        default:
-            callback(`Unknown operation: ${operation}`);
+        if (!!event?.httpMethod)
+            returnObject = await handleHttpEvent(event, context, engine);
+        
+        else if (event.type === "e-flow")
+            returnObject = await handleEFlowEvent(event, context, engine);
+
+        else if (event.type === "e-flowStep") 
+            returnObject = await handleEFlowStep(event, context, engine);
+
+        
+    } catch (err) {
+        return { Error: err }
+    } finally {
+        engine.endEvent(); //do the last logs
+        await engine.flushLogs();
     }
 
+    return returnObject;
 };

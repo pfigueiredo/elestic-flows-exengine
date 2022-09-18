@@ -12,24 +12,34 @@ class ExecutionContext {
             this.preparation = activity.node.prepare(activity.properties, this);
     }
 
+    prepareFxApi() {
+        this.flow = { flowId: this.$flow.flowId };
+        this.activity = { flowId: this.$flow.flowId, activityId: this.$activity.address };
+        this.process = { processId: this.engine.processId };
+
+        this.flow.data = this.getFlowStorage();
+        this.activity.data = this.getActivityStorage();
+        this.process.data = this.getProcessStorage();
+    }
+
     getActivityStorage() {
         const name = "activity";
         if (!!this.$storage[name]) return this.$storage[name];
-        const storeKey = `${this.$flow.flowId}#${this.$activity.address}`;
+        const storeKey = `A#${this.$flow.flowId}#${this.$activity.address}`;
         return this.$storage[name] = new Storage(name, storeKey);
     }
 
     getFlowStorage() {
         const name = "flow";
         if (!!this.$storage[name]) return this.$storage[name];
-        const storeKey = this.$flow.flowId;
+        const storeKey = `F#${this.$flow.flowId}`;
         return this.$storage[name] = new Storage(name, storeKey);
     }
 
     getProcessStorage() {
         const name = "process";
         if (!!this.$storage[name]) return this.$storage[name];
-        const storeKey = this.engine.processId;
+        const storeKey = `P#${this.engine.processId}`;
         return this.$storage[name] = new Storage(name, storeKey);
     }
 
@@ -45,7 +55,11 @@ class ExecutionContext {
     }
 
     log(message) {
-        console.log(message);
+        try {
+            this.engine?.logger.log(message);
+        } catch (err) { 
+            console.log(err);
+        }
     }
 
     prepareTrigger(trigger) {
@@ -55,6 +69,18 @@ class ExecutionContext {
     prepareResponse(response, yield_execution) {
         this.response = response;
         this.yield_execution = yield_execution;
+    }
+
+    tryCatch(message) {
+        const address = this.$flow.getErrorHandler();
+        if (address) {
+            this.continuations.unshift({
+                message: {... message },
+                next: address
+            });
+            return true;
+        }
+        return false;
     }
 
     continueWith(message, output) {
@@ -73,9 +99,14 @@ class ExecutionContext {
 class Executor {
 
     constructor(activity, node, customFunction, engine) {
-        this.executionFunction = customFunction ?? node?.execute ?? this.deafultExec;
+        this.executionFunction = node?.execute ?? customFunction ?? this.deafultExec;
         this.activity = activity;
         this.context = new ExecutionContext(this.activity, engine);
+        this.engine = engine;
+    }
+
+    getName() {
+        return this.activity?.name;   
     }
 
     async exec (message) {
@@ -84,17 +115,29 @@ class Executor {
             try {
                 await this.executionFunction.apply(this.context, [this.context, message]);
             } catch (err) {
-                const errMessage = err?.message ?? err?.toString() ?? "Flow error check log for details";
 
-                this.context.error = err;
-                this.context.continueWith({
+                const error = {};
+                error.message = err?.message ?? "Flow error check log for details";
+                error.name = err?.name;
+                error.line = err?.lineNumber;
+                error.column = err?.columnNumber;
+                error.address = this.activity?.address;
+                error.activity = this.activity?.name;
+
+                const errMsg = {
                     error: true,
                     payload: { 
-                        error: errMessage,
+                        error: error,
                         address: this.activity?.address,
                         activity: this.activity?.name
                     }
-                })
+                }
+
+                this.engine.logger.error(error);
+
+                if (!this.context.tryCatch(errMsg))
+                    this.context.error = errMsg;
+
             }
             return {
                 continueWith: this.context.continuations,

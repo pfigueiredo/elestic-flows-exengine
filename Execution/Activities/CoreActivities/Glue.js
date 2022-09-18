@@ -25,7 +25,7 @@ node.execute = async (context, msg) => {
         }
     } else {
         context.glueArray.push(item);
-        if (context.queueLenght() == 0)
+        if (context.queueLength() == 0)
             stop = true;
     }
 

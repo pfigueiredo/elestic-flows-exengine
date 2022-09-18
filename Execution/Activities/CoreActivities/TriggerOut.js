@@ -15,10 +15,10 @@ node.execute = async (context, msg) => {
     let { type } = preparation;
     const retMsg = { ...msg }
 
-    if (!type) type = "res";
+    if (!type) type = "response";
 
     switch (type) {
-        case "res": context.prepareResponse(prepateResponse(msg, preparation)); break; //http
+        case "response": context.prepareResponse(prepateResponse(msg, preparation)); break; //http
         case "e-flow": context.prepareTrigger(prepareEFlowTrigger(msg, preparation)); break; //e-flow
     }
 

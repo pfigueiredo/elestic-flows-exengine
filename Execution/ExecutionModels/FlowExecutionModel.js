@@ -17,6 +17,7 @@ class FlowExecutionModel {
             : [];
 
         this.entries = this.activities.filter(a => a.type === 'core:start');
+        this.errorHandlers = this.activities.filter(a => a.type === 'core:catch');
         this.updateWires();
     }
 
@@ -25,10 +26,28 @@ class FlowExecutionModel {
         return activity;
     }
 
+    getStepInfoFromEntryPoint(entryPoint) {
+        return new StepInfo({flowId : this.flowId, address: entryPoint.address });
+    }
+
     findEntryPointStep(trigger) {
         //default
         const entryPoint = (this.entries.length > 0) ? this.entries[0] : null;
         return new StepInfo({flowId : this.flowId, address: entryPoint.address });
+    }
+
+    getErrorHandler() {
+        const handler = (this.errorHandlers && this.errorHandlers.length > 0) 
+            ? this.errorHandlers[0] : null;
+
+        if (handler && handler.address) {
+            return new StepInfo({
+                flowId: this.flowId,
+                address: handler.address
+            });
+        }
+        
+        return null;
     }
 
     updateWires() {
@@ -78,14 +97,16 @@ class ActivityExecutionModel {
     }
 
     getOutputAddresses(index) {
-        if (this.outputs.length > index)
-            return this.outputs[index].connections.map((conn) => {
+        if (this.outputs.length > index) {
+            const ioPort = this.outputs[index];
+            return ioPort.connections.map((conn) => {
                 return new StepInfo({
                     flowId: this.flow.flowId,
-                    address: conn
+                    address: conn,
+                    remote: ioPort.type == 1 || ioPort.type == "remote"
                 });
             });
-        else 
+        } else 
             return [];
     }
 
@@ -118,7 +139,17 @@ class IOExecutionModel {
         this.color = data.color ?? null;
         this.isErrorOutput = data.isErrorOutput ?? false;
         this.posY = (allPorts.length < 2) ? 10 : 4 + (12 * index);
-        this.connections = data.connections;
+        //this.connections = data.connections;
+
+        if (data?.connections) {
+            let uniqueConns = data.connections.filter((c, index) => {
+                return data.connections.indexOf(c) === index;
+            });
+            this.connections = uniqueConns;
+        }
+
+        
+
         // this.wires = (data.connections)
         //     ? data.connections.map(c => new WireExecutionModel(c, this))
         //     : [];
