@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk');
-const { resolve } = require('aws-sdk/lib/model/shape');
 const dynamo = new AWS.DynamoDB.DocumentClient({region: "eu-west-1"});
 
 const tableName = 'elastic-flow-storage';
@@ -15,15 +14,7 @@ async function SaveObject(id, obj) {
         TableName: tableName
     };
 
-    const promise = new Promise((resolve, reject) => {
-        dynamo.put(params, function(err, data) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data);
-            }
-        });
-    })
+    return await dynamo.put(params).promise();
     
 }
 
@@ -36,21 +27,13 @@ async function GetObjectById(id) {
         TableName: tableName
     };
 
-    const promise = new Promise(function(resolve, reject) {
-        dynamo.get(params, function(err, data) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data?.Item?.value);
-            }
-        });
-    });
-    return promise
+    return await dynamo.get(params).promise();
 
 }
 
 async function getValue(key) {
-    return await GetObjectById(key);
+    const value = await GetObjectById(key);
+    return value?.Item?.value;
 }
 
 async function setValue(key, obj) {

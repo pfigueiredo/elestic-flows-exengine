@@ -18,6 +18,7 @@
   "homepage": "https://github.com/pfigueiredo/elestic-flows-exengine#readme",
   "dependencies": {
     "aws-sdk": "^2.1204.0",
-    "axios": "^0.27.2"
+    "axios": "^0.27.2",
+    "stack-trace": "^1.0.0-pre1"
   }
 }

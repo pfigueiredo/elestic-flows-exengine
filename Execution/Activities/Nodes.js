@@ -5,7 +5,11 @@ const { trigger } = require('./CoreActivities/TriggerOut');
 const { userFx } = require('./CoreActivities/UserFx');
 const { httpcall } = require('./CoreActivities/HttpCall');
 const { call } = require('./CoreActivities/Call');
-const { end } = require('./CoreActivities/End')
+const { end } = require('./CoreActivities/End');
+const { logNode } = require('./CoreActivities/LogNode');
+const { ifNode } = require('./CoreActivities/IfNode');
+const { switchNode } = require('./CoreActivities/switchNode')
+const { fork } = require('./CoreActivities/Fork')
 
 const nodes = {};
 
@@ -26,7 +30,7 @@ nodes["core:end"] = {
     inputs: [],
     repare: end.prepare,
     execute: end.execute,
-    description: "flow endpoint, returns any messages back if in sync mode",
+    description: "flow endpoint, end current branch and returns any messages back if in sync mode",
     outputs: [ ],
     properties: { }
 }
@@ -44,6 +48,19 @@ nodes["core:function"] = {
         functionCode: `//The default function only relays the current msg to the next activity\nContinueWith(msg);`
     }
 }
+
+nodes["core:log"] = {
+    isNode: true,
+    icon: "n/fx.svg",
+    name: "Log Execution",
+    prepare: logNode.prepare,
+    execute: logNode.execute,
+    description: "log values to the execution console",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ { address: "O1", type: "sync" } ],
+    properties: { }
+}
+
 
 nodes["core:catch"] = {
     isNode: true,
@@ -66,11 +83,13 @@ nodes["core:assign"] = {
     outputs: [ { address: "O1", type: "sync" } ]
 }
 
-nodes["core:switch"] = {
+nodes["core:if"] = {
     isNode: true,
     icon: "n/if.svg",
-    name: "Split/Switch",
-    description: "switches the execution into several conditional paths",
+    name: "If/Else branch",
+    prepare: ifNode.prepare,
+    execute: ifNode.execute,
+    description: "switches execution into several if/else paths",
     inputs: [ { address: "I1", type: "sync" } ],
     outputs: [ 
         { name: "true", address: "O1", type: "sync" },
@@ -78,11 +97,45 @@ nodes["core:switch"] = {
     ]
 }
 
+nodes["core:fork"] = {
+    isNode: true,
+    icon: "n/if.svg",
+    name: "Fork",
+    prepare: fork.prepare,
+    execute: fork.execute,
+    description: "forks the execution into several paths",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ 
+        { name: "Path 1", address: "O1", type: "sync" },
+        { name: "Path 2", address: "O2", type: "sync" } 
+    ],
+    properties: {
+        conditions: []
+    }
+}
+
+nodes["core:switch"] = {
+    isNode: true,
+    icon: "n/if.svg",
+    name: "Split/Switch",
+    prepare: switchNode.prepare,
+    execute: switchNode.execute,
+    description: "switches the execution into several conditional paths",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ 
+        { name: "Condition 1", address: "O1", type: "sync" },
+        { name: "Condition 2", address: "O2", type: "sync" } 
+    ],
+    properties: {
+        conditions: []
+    }
+}
+
 nodes["core:join"] = {
     isNode: true,
     icon: "n/andJoin.svg",
     name: "Join",
-    description: "joins executions from several inputs and continues",
+    description: "joins executions from several branch and continues",
     inputs: [ { address: "I1", type: "sync" } ],
     outputs: [ { address: "O1", type: "sync" } ]
 }

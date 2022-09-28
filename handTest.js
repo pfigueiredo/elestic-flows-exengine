@@ -2,7 +2,7 @@ const { handler } = require('./index');
 const event = {
     version: '1.0',
     resource: '/api/{var+}',
-    path: '/default/api/giveError',
+    path: '/default/api/testFork2',
     httpMethod: 'GET',
     headers: {
       'Content-Length': '0',

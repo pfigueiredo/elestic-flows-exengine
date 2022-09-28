@@ -54,12 +54,14 @@ class Engine {
         this.statistics.duration.total = this.statistics.end.run - this.statistics.start.run;
         this.statistics.duration.life = this.statistics.end.run - this.statistics.start.engine;
 
-        this.logger.info('execution statistics');
-        this.logger.log(this.statistics.duration);
+        if (this.logger) {
+            this.logger.info('execution statistics');
+            this.logger.log(this.statistics.duration);
+        }
     }
 
     async flushLogs() {
-        await this.logger.flushLogs();
+        if (this.logger) await this.logger.flushLogs();
     }
 
     getReturnObject() {
@@ -144,12 +146,13 @@ class Engine {
         this.flowId = flowId
         this.processId = processId ?? crypto.randomUUID();
         this.executionId = crypto.randomUUID();
-        this.prepareLogger();
 
         if (!this.flowId) { 
             console.error(`flow not found!! ${this.flowId}`);
             return null;
         }
+
+        this.prepareLogger();
 
         await this.loadAfterPreparation();
     }
@@ -161,13 +164,13 @@ class Engine {
         this.processId = processId ?? crypto.randomUUID();
         this.executionId = crypto.randomUUID();
 
-        if (!this.logger)
-            this.prepareLogger();
-
         if (!this.flowId) { 
             console.error(`flow not found!! ${this.flowId}`);
             return null;
         }
+
+        if (!this.logger)
+            this.prepareLogger();
 
         await this.loadAfterPreparation();
         return ep;

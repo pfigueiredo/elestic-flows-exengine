@@ -75,6 +75,9 @@ const handleHttpEvent = async (event, context, engine) => {
         context: event?.requestContext
     });
 
+    if (!entryPoint)
+        return HttpError(404, { message: `flow not found: ${event?.httpMethod ?? "GET"} ${path}` })
+
     const payload = (!!event?.body) ?
         JSON.parse(event?.body) : { }
 
@@ -88,7 +91,7 @@ const handleHttpEvent = async (event, context, engine) => {
     const returnObj = await doInvocation(entryPoint, message, engine);
 
     engine.logger.log('invocation ended');
-    engine.logger.log(returnObj);
+    //engine.logger.log(returnObj);
 
     if (!!returnObj) {
         if (returnObj.code > 300) {
@@ -98,7 +101,7 @@ const handleHttpEvent = async (event, context, engine) => {
             return HttpOk(returnObj.body);
 
     } else {
-        return HttpError(404, { message: `flow not found: ${event?.httpMethod ?? "GET"} ${path}` })
+        return HttpError(200, { message: 'flow returned nothing' })
     }
 };
 
@@ -112,6 +115,9 @@ const handleEFlowEvent = async function(event, context, engine) {
 
     engine.logger.log('handle e-flow event');
 
+    if (!entryPoint)
+        return EFlowError(entryPoint.flowId, { message: `flow not found: ${event.start ?? "default"}` })
+
     const message = new Message({
         ...event.msg, next: null 
     });
@@ -119,7 +125,7 @@ const handleEFlowEvent = async function(event, context, engine) {
     const returnObj = await doInvocation(entryPoint, message, engine);
 
     engine.logger.log('invocation ended');
-    engine.logger.log(returnObj);
+    //engine.logger.log(returnObj);
 
     if (!!returnObj) {
         if (returnObj.code > 300) {
@@ -129,7 +135,7 @@ const handleEFlowEvent = async function(event, context, engine) {
             return EFlowOk(entryPoint.flowId, returnObj.body);
 
     } else {
-        return EFlowError(entryPoint.flowId, { message: `flow not found: ${event.start ?? "default"}` })
+        return EFlowError(entryPoint.flowId, { message: 'flow returned nothing' })
     }
 };
 
@@ -151,7 +157,7 @@ const handleEFlowStep = async function(event, context, engine) {
     const returnObj = await doInvocation(null, message, engine);
 
     engine.logger.log('invocation ended');
-    engine.logger.log(returnObj);
+    //engine.logger.log(returnObj);
 
     if (!!returnObj) {
         if (returnObj.code > 300) {

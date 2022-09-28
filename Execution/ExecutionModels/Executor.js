@@ -1,5 +1,44 @@
 const { Storage } = require('./Storage');
 
+let trace = null;
+
+class ExecutionConsole {
+
+    constructor(context) {
+        this.context = context;
+    }
+
+    note() {
+        const logger = this.context.engine.logger;
+        logger.user_note.apply(logger, arguments);
+    }
+
+    debug() {
+        const logger = this.context.engine.logger;
+        logger.user_debug.apply(logger, arguments);
+    }
+
+    log() {
+        const logger = this.context.engine.logger;
+        logger.user_log.apply(logger, arguments);
+    }
+
+    info() {
+        const logger = this.context.engine.logger;
+        logger.user_info.apply(logger, arguments);
+    }
+
+    warn() {
+        const logger = this.context.engine.logger;
+        logger.user_warn.apply(logger, arguments);
+    }
+
+    error() {
+        const logger = this.context.engine.logger;
+        logger.user_error.apply(logger, arguments);
+    }
+}
+
 class ExecutionContext {
     constructor(activity, engine) {
         this.engine = engine;
@@ -8,8 +47,14 @@ class ExecutionContext {
         this.$activity = activity;
         this.preparation = {};
         this.$storage = {};
-        if (activity?.node?.prepare)
-            this.preparation = activity.node.prepare(activity.properties, this);
+        this.prepared = false;
+        this.console = new ExecutionConsole(this);
+    }
+
+    prepare() {
+        if (this.$activity?.node?.prepare)
+            this.preparation = this.$activity.node.prepare(this.$activity.properties, this);
+        this.prepared = true;
     }
 
     prepareFxApi() {
@@ -55,11 +100,8 @@ class ExecutionContext {
     }
 
     log(message) {
-        try {
-            this.engine?.logger.log(message);
-        } catch (err) { 
-            console.log(err);
-        }
+        this.console.log(message);
+        this.engine.logger.warn("usage of context.log is deprecated please use context.console.log");
     }
 
     prepareTrigger(trigger) {
@@ -86,6 +128,10 @@ class ExecutionContext {
     continueWith(message, output) {
 
         const addresses = this.$activity.getOutputAddresses(output ?? 0);
+
+        if (addresses.lenght == 0)
+            this.logger.warn("Got a continuation but didn't find any output/wire available for port " + (output ?? 0));
+
         addresses.forEach(address => {
             this.continuations.unshift({
                 message: {... message },
@@ -113,8 +159,23 @@ class Executor {
         if (!!this.executionFunction) {
             this.context.clean();
             try {
+                if (!this.context.prepared)
+                    this.context.prepare();
+
                 await this.executionFunction.apply(this.context, [this.context, message]);
             } catch (err) {
+
+                // let errorTrace = null;
+
+                // if (!trace)
+                //     trace = await import('stack-trace');
+
+                // if (trace.parse)
+                //     errorTrace = trace.parse(err);
+                
+                //     console.log(err.stack);
+
+                console.error(err);
 
                 const error = {};
                 error.message = err?.message ?? "Flow error check log for details";
@@ -123,6 +184,7 @@ class Executor {
                 error.column = err?.columnNumber;
                 error.address = this.activity?.address;
                 error.activity = this.activity?.name;
+                //error.trace = errorTrace;
 
                 const errMsg = {
                     error: true,
@@ -150,6 +212,7 @@ class Executor {
     }
 
     deafultExec (context, message) {
+        context.logger?.warn("Default executor called, is this node defined?")
         context.continueWith(message);
     }
 

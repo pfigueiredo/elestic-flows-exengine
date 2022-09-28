@@ -24,21 +24,11 @@ async function SaveObject(flowId, executionId, entries, startTime, endTime) {
     };
 
     try {
-        console.info("inserting logs", data);
+        //console.info("inserting logs", data);
         await dynamo.put(params).promise();
     } catch (err) {
         console.log(err);
     }
-
-    // const promise = new Promise((resolve, reject) => {
-    //     dynamo.put(params, function(err, data) {
-    //         if (err) {
-    //             reject(err);
-    //         } else {
-    //             resolve(data);
-    //         }
-    //     });
-    // })
     
 }
 
@@ -60,7 +50,7 @@ class Logger {
         return `${this.processId}/${this.executionId}`;
     }
 
-    write(level, object) {
+    write(level, object, isUserLog) {
         const type = (typeof object);
         let message = null;
         let messageType = "v";
@@ -77,50 +67,88 @@ class Logger {
             level: level,
             message: message,
             time: new Date().toISOString(),
-            type: messageType
+            type: messageType,
+            isUserLog: !!isUserLog
         }
 
         this.addToEntries(logObject);
     }
 
+    devideAndWrite(level, args, isUserLog) {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            this.write(level, arg, isUserLog);
+        }
+    }
+
+    note() {
+        console.debug.apply(null, arguments);
+        this.devideAndWrite("NOTE", arguments, false);
+    }
+
+    debug() {
+        console.debug.apply(null, arguments);
+        this.devideAndWrite("DEBUG", arguments, false);
+    }
+
     trace() {
         console.trace.apply(null, arguments);
-        for (let i = 0; i < arguments.length; i++) {
-            const arg = arguments[i];
-            this.write("TRACE", arg);
-        }
+        this.devideAndWrite("TRACE", arguments, false);
     }
 
     log() {
         console.log.apply(null, arguments);
-        for (let i = 0; i < arguments.length; i++) {
-            const arg = arguments[i];
-            this.write("LOG", arg);
-        }
+        this.devideAndWrite("LOG", arguments, false);
     }
 
     info() {
         console.info.apply(null, arguments);
-        for (let i = 0; i < arguments.length; i++) {
-            const arg = arguments[i];
-            this.write("INFO", arg);
-        }
+        this.devideAndWrite("INFO", arguments, false);
     }
 
     warn() {
         console.warn.apply(null, arguments);
-        for (let i = 0; i < arguments.length; i++) {
-            const arg = arguments[i];
-            this.write("WARN", arg);
-        }
+        this.devideAndWrite("WARN", arguments, false);
     }
 
     error() {
         console.error.apply(null, arguments);
-        for (let i = 0; i < arguments.length; i++) {
-            const arg = arguments[i];
-            this.write("ERROR", arg);
-        }
+        this.devideAndWrite("ERROR", arguments, false);
+    }
+
+    user_note() {
+        console.debug.apply(null, arguments);
+        this.devideAndWrite("NOTE", arguments, true);
+    }
+
+    user_debug() {
+        console.debug.apply(null, arguments);
+        this.devideAndWrite("DEBUG", arguments, true);
+    }
+
+    user_trace() {
+        console.trace.apply(null, arguments);
+        this.devideAndWrite("TRACE", arguments, true);
+    }
+
+    user_log() {
+        console.log.apply(null, arguments);
+        this.devideAndWrite("LOG", arguments, true);
+    }
+
+    user_info() {
+        console.info.apply(null, arguments);
+        this.devideAndWrite("INFO", arguments, true);
+    }
+
+    user_warn() {
+        console.warn.apply(null, arguments);
+        this.devideAndWrite("WARN", arguments, true);
+    }
+
+    user_error() {
+        console.error.apply(null, arguments);
+        this.devideAndWrite("ERROR", arguments, true);
     }
 
     async flushLogs() {
