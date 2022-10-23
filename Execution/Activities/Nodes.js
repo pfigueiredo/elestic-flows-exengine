@@ -10,6 +10,11 @@ const { logNode } = require('./CoreActivities/LogNode');
 const { ifNode } = require('./CoreActivities/IfNode');
 const { switchNode } = require('./CoreActivities/switchNode')
 const { fork } = require('./CoreActivities/Fork')
+const { forEach } = require('./CoreActivities/ForEach');
+const { continueLoop } = require('./CoreActivities/LoopContinue');
+const { breakLoop } = require('./CoreActivities/LoopBreak');
+const { forLoop } = require('./CoreActivities/ForLoop');
+const { externalNode } = require('./CoreActivities/ExternalNode');
 
 const nodes = {};
 
@@ -109,9 +114,7 @@ nodes["core:fork"] = {
         { name: "Path 1", address: "O1", type: "sync" },
         { name: "Path 2", address: "O2", type: "sync" } 
     ],
-    properties: {
-        conditions: []
-    }
+    properties: { }
 }
 
 nodes["core:switch"] = {
@@ -224,6 +227,74 @@ nodes["object:operation"] = {
     description: "does an external http rest call",
     inputs: [ { address: "I1", type: "sync" } ],
     outputs: [ { address: "O1", type: "sync" } ]
+}
+
+nodes["core:foreach"] = {
+    isNode: true,
+    icon: "n/loop.svg",
+    name: "For Each",
+    prepare: forEach.prepare,
+    execute: forEach.execute,
+    description: "loop the execution for each element of a list",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ 
+        { name: "Continue", address: "O1", type: "sync" },
+        { name: "Loop", address: "O2", type: "sync", color:"yellow" } 
+    ],
+    properties: { }
+}
+
+nodes["core:continue"] = {
+    isNode: true,
+    icon: "n/continue.svg",
+    name: "Continue",
+    prepare: continueLoop.prepare,
+    execute: continueLoop.execute,
+    description: "forces the imediate trigger of the next iteraction in a loop",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [],
+    properties: { }
+}
+
+nodes["core:break"] = {
+    isNode: true,
+    icon: "n/continue.svg",
+    name: "Break",
+    prepare: breakLoop.prepare,
+    execute: breakLoop.execute,
+    description: "breaks the current loop and continues",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [],
+    properties: { }
+}
+
+nodes["core:loop"] = {
+    isNode: true,
+    icon: "n/loop.svg",
+    name: "Loop",
+    prepare: forLoop.prepare,
+    execute: forLoop.execute,
+    description: "loop the execution a number of times",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ 
+        { name: "Continue", address: "O1", type: "sync" },
+        { name: "Loop", address: "O2", type: "sync", color:"yellow" } 
+    ],
+    properties: { }
+}
+
+nodes["core:external"] = {
+    isNode: true,
+    icon: "n/externalCall.svg",
+    name: "External Activity",
+    prepare: externalNode.prepare,
+    execute: externalNode.execute,
+    description: "stops and waits for an external action/activity",
+    inputs: [ { address: "I1", type: "sync" } ],
+    outputs: [ 
+        { name: "Continue", address: "O1", type: "sync" }
+    ],
+    properties: { }
 }
 
 nodes.fillInDefautls = function(node) {
