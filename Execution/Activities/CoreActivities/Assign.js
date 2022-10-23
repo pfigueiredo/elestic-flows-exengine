@@ -42,7 +42,7 @@ assign.execute = async (context, msg) => {
 
     let bag = {};
 
-    for (let i = 0; i < preparation.assignments.length; i++) {
+    for (let i = 0; i < (preparation.assignments?.length ?? 0); i++) {
         const assign = preparation.assignments[i];
         const item = assign.item;
         const value = await assign.getValue.call(bag, msg, msg.payload, activity, process, flow);
