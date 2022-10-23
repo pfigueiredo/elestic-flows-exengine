@@ -2,7 +2,7 @@
 const node = {};
 node.type = 'core:end';
 
-function prepateResponse(input, preparation) { return {...input.payload }; }
+function prepareResponse(input, preparation) { return {...input.payload }; }
 
 node.prepare = (properties) => {
     const preparation = { ...properties };
@@ -14,7 +14,7 @@ node.execute = async (context, msg) => {
     let { type } = preparation;
 
     if (!type) type = "response";
-    context.prepareResponse(prepateResponse(msg, preparation));
+    context.prepareResponse(prepareResponse(msg, preparation));
 }
 
 exports.end = node;
