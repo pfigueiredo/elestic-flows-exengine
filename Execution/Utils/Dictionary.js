@@ -1,7 +1,7 @@
 exports.Dictionary = class Dictionary {
     constructor() {
         this.store = {};
-        this.lenght = 0;
+        this.length = 0;
     }
 
     add(key, value) {
@@ -9,13 +9,13 @@ exports.Dictionary = class Dictionary {
             this.store[key] = value;    
         } else {
             this.store[key] = value;
-            this.lenght++;
+            this.length++;
         }
     }
 
     remove(key) {
         delete this.store[key];
-        this.lenght--;
+        this.length--;
     }
 
     get(key) {

@@ -38,8 +38,17 @@ class Logger {
         this.flowId = flowId;
         this.processId = processId;
         this.executionId = executionId;
+        this.loglevel = 0;
         this.entries = [];
         this.startTime = new Date().toISOString();
+    }
+
+    setExecutionId(executionId) {
+        this.executionId = executionId;
+    }
+
+    setLogLevel(logLevel) {
+        this.loglevel = logLevel;
     }
 
     addToEntries(logObject) {
@@ -82,73 +91,101 @@ class Logger {
     }
 
     note() {
-        console.debug.apply(null, arguments);
-        this.devideAndWrite("NOTE", arguments, false);
+        if (this.loglevel < 1) {
+            console.debug.apply(null, arguments);
+            this.devideAndWrite("NOTE", arguments, false);
+        }
     }
 
     debug() {
-        console.debug.apply(null, arguments);
-        this.devideAndWrite("DEBUG", arguments, false);
+        if (this.loglevel < 2) {
+            console.debug.apply(null, arguments);
+            this.devideAndWrite("DEBUG", arguments, false);
+        }
     }
 
     trace() {
-        console.trace.apply(null, arguments);
-        this.devideAndWrite("TRACE", arguments, false);
+        if (this.loglevel < 3) {
+            console.trace.apply(null, arguments);
+            this.devideAndWrite("TRACE", arguments, false);
+        }
     }
 
     log() {
-        console.log.apply(null, arguments);
-        this.devideAndWrite("LOG", arguments, false);
+        if (this.loglevel < 4) {
+            console.log.apply(null, arguments);
+            this.devideAndWrite("LOG", arguments, false);
+        }
     }
 
     info() {
-        console.info.apply(null, arguments);
-        this.devideAndWrite("INFO", arguments, false);
+        if (this.loglevel < 5) {
+            console.info.apply(null, arguments);
+            this.devideAndWrite("INFO", arguments, false);
+        }
     }
 
     warn() {
-        console.warn.apply(null, arguments);
-        this.devideAndWrite("WARN", arguments, false);
+        if (this.loglevel < 6) {
+            console.warn.apply(null, arguments);
+            this.devideAndWrite("WARN", arguments, false);
+        }
     }
 
     error() {
-        console.error.apply(null, arguments);
-        this.devideAndWrite("ERROR", arguments, false);
+        if (this.loglevel < 7) {
+            console.error.apply(null, arguments);
+            this.devideAndWrite("ERROR", arguments, false);
+        }
     }
 
     user_note() {
-        console.debug.apply(null, arguments);
-        this.devideAndWrite("NOTE", arguments, true);
+        if (this.loglevel < 1) {
+            console.debug.apply(null, arguments);
+            this.devideAndWrite("NOTE", arguments, true);
+        }
     }
 
     user_debug() {
-        console.debug.apply(null, arguments);
-        this.devideAndWrite("DEBUG", arguments, true);
+        if (this.loglevel < 2) {
+            console.debug.apply(null, arguments);
+            this.devideAndWrite("DEBUG", arguments, true);
+        }
     }
 
     user_trace() {
-        console.trace.apply(null, arguments);
-        this.devideAndWrite("TRACE", arguments, true);
+        if (this.loglevel < 3) {
+            console.trace.apply(null, arguments);
+            this.devideAndWrite("TRACE", arguments, true);
+        }
     }
 
     user_log() {
-        console.log.apply(null, arguments);
-        this.devideAndWrite("LOG", arguments, true);
+        if (this.loglevel < 4) {
+            console.log.apply(null, arguments);
+            this.devideAndWrite("LOG", arguments, true);
+        }
     }
 
     user_info() {
-        console.info.apply(null, arguments);
-        this.devideAndWrite("INFO", arguments, true);
+        if (this.loglevel < 5) {
+            console.info.apply(null, arguments);
+            this.devideAndWrite("INFO", arguments, true);
+        }
     }
 
     user_warn() {
-        console.warn.apply(null, arguments);
-        this.devideAndWrite("WARN", arguments, true);
+        if (this.loglevel < 6) {
+            console.warn.apply(null, arguments);
+            this.devideAndWrite("WARN", arguments, true);
+        }
     }
 
     user_error() {
-        console.error.apply(null, arguments);
-        this.devideAndWrite("ERROR", arguments, true);
+        if (this.loglevel < 7) {
+            console.error.apply(null, arguments);
+            this.devideAndWrite("ERROR", arguments, true);
+        }
     }
 
     async flushLogs() {
@@ -163,6 +200,7 @@ class Logger {
             console.log(err);
         });
 
+        //TODO: use and extention to make this off process
         console.log('FLUSHED LOGS')
 
         this.startTime = new Date().toISOString();

@@ -1,4 +1,5 @@
 const { Storage } = require('./Storage');
+const { ExecutionStorage } = require('./ExecutionStorage');
 
 let trace = null;
 
@@ -47,8 +48,52 @@ class ExecutionContext {
         this.$activity = activity;
         this.preparation = {};
         this.$storage = {};
+        this.$execStorage = null;
         this.prepared = false;
         this.console = new ExecutionConsole(this);
+    }
+
+    $setScope(scope) {
+        this.$scope = { 
+            ...scope, //the data in the scope can be shared não big deal.
+            stack: [ //avoid mutations of scope with multiple paths in the same process.
+                ...(scope?.stack ?? [])
+            ] 
+        }
+    }
+
+    clearActivityScope() {
+        const address = this.$activity.address;
+        if (this.$scope?.stack?.length > 0) {
+            const index = this.$scope.stack.indexOf(address);
+            if (index >= 0)
+                this.$scope.stack.splice(index, 1);
+
+            if (this.$scope.activities[address])
+                delete this.$scope.activities[address];
+        }
+    }
+
+    getCurrentScope() {
+        if (this.$scope?.stack?.length > 0) {
+            const currentScopeAddress = this.$scope.stack[0];
+            return this.$scope.activities[currentScopeAddress] ?? null;
+        } 
+        return null;
+    }
+
+    getActivityScope() {
+        if (!this.$scope.activities) this.$scope.activities = {}
+        const activitiesScope = this.$scope.activities;
+        const address = this.$activity.address;
+
+        if (!activitiesScope[address]) {
+            activitiesScope[address] = { address: address }
+            if (!this.$scope.stack) this.$scope.stack = [];
+            this.$scope.stack.unshift(address);
+        }
+
+        return activitiesScope[address];
     }
 
     prepare() {
@@ -125,19 +170,61 @@ class ExecutionContext {
         return false;
     }
 
+    createContinuations(addresses, message) {
+        if (addresses) {
+            addresses.forEach(address => {
+                this.continuations.unshift({
+                    message: {... message },
+                    next: address,
+                    $scope: this.$scope
+                }); 
+            });    
+        }
+    }
+
+    jumpTo(message, address) {
+        const destination = this.$flow?.getActivity(address);
+        if (destination) {
+            const stepInfo = destination.getJumpAddress();
+            this.createContinuations([stepInfo], message);
+        } else
+            this.logger.warn(`can't jump to address ${address}, activity not found in flow`);
+    }
+
+    async storeExecutionData(message, isDebug) {
+        if (!this.$execStorage) this.$execStorage = new ExecutionStorage();
+        await this.$execStorage.storeExecutionData(
+            this.engine.processId, 
+            this.engine.executionId,
+            this.$flow.flowId,
+            this.$activity.address,
+            isDebug, 
+            false,
+            message
+        );
+    }
+
+    async pauseExecution(message, isDebug) {
+        if (!this.$execStorage) this.$execStorage = new ExecutionStorage();
+        await this.$execStorage.storeExecutionData(
+            this.engine.processId, 
+            this.engine.executionId,
+            this.$flow.flowId,
+            this.$activity.address,
+            isDebug, 
+            true,
+            message
+        );
+    }
+
     continueWith(message, output) {
 
         const addresses = this.$activity.getOutputAddresses(output ?? 0);
 
-        if (addresses.lenght == 0)
+        if (addresses.length == 0)
             this.logger.warn("Got a continuation but didn't find any output/wire available for port " + (output ?? 0));
 
-        addresses.forEach(address => {
-            this.continuations.unshift({
-                message: {... message },
-                next: address
-            }); 
-        });
+        this.createContinuations(addresses, message);
         return message;
     }
 }
@@ -151,6 +238,11 @@ class Executor {
         this.engine = engine;
     }
 
+    setEngine(engine) {
+        this.context.engine = engine;
+        this.engine = engine;
+    }
+
     getName() {
         return this.activity?.name;   
     }
@@ -158,6 +250,7 @@ class Executor {
     async exec (message) {
         if (!!this.executionFunction) {
             this.context.clean();
+            this.context.$setScope(message.$scope ?? {});
             try {
                 if (!this.context.prepared)
                     this.context.prepare();

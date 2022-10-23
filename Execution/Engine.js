@@ -109,7 +109,7 @@ class Engine {
     }
 
     loadAfterPreparation = async () => {
-        this.logger.log('-- START --------------------------------------------------');
+        this.logger.note('-- START --------------------------------------------------');
         this.logger.log(`loading '${this.flowId}' flow data...`);
         const execMilis = Date.now();
 
@@ -120,11 +120,12 @@ class Engine {
             this.logger.log(`${this.flowId} found in flow-cache loading from cache`);
             this.flow = flowCache.get(this.flowId);
             const age = execMilis - this.flow.loadedAt;
-            this.logger.log(`${this.flowId} loaded from cache, checking age ${age}`);
-            if (age > (60 * 1000)) {
+            const ttl = this.flow.getTTL() ?? (60 * 1000);
+            this.logger.log(`${this.flowId} loaded from cache, checking age ${age} against ttl ${ttl}`);
+            if (age > ttl) {
                 loadFromDb = true;
                 this.flow = null;
-                this.logger.warn(`${this.flowId} flow is too old ${age}`);
+                this.logger.warn(`${this.flowId} flow is too old ${age} vs ${ttl}`);
             }
         }
 
@@ -209,7 +210,7 @@ class Engine {
 
                 
                 const executor = step.getExecutor(this);
-                this.logger.info(`executing ${step.address} of type ${step.type} (${executor?.getName()})`)
+                this.logger.note(`executing ${step.address} of type ${step.type} (${executor?.getName()})`)
                 if (!!executor?.exec) {
     
                     const result = await executor.exec(message);
@@ -220,6 +221,7 @@ class Engine {
                             for (let c = 0; c < continuations.length; c++) {
                                 let nextMsg = continuations[c].message;
                                 nextMsg.next = continuations[c].next;
+                                nextMsg.$scope = continuations[c].$scope;
                                 if (!!nextMsg.next?.address) { 
                                     if (nextMsg.next.remote) {
                                         const invoker = new FlowInvoker(this);
@@ -239,17 +241,17 @@ class Engine {
                         }
 
                         if (!!result.response) {
-                            this.logger.log('got response from flow, execution can continue but it normaly indicates the end for this execution');
+                            this.logger.note('got response from flow, execution can continue but it normaly indicates the end for this execution');
                             this.response = result.response;
                         }
 
                         if (!!result.yield_execution) { 
-                            this.logger.log('got yield execution');
+                            this.logger.note('got yield execution');
                             //todo: store the messages queue and return;
                         }
 
                         if (result.trigger) {
-                            this.logger.log('got trigger execution');
+                            this.logger.note('got trigger execution');
                             //todo trigger the execution of another flow...
                         }
 

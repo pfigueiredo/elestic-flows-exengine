@@ -2,7 +2,7 @@ const { handler } = require('./index');
 const event = {
     version: '1.0',
     resource: '/api/{var+}',
-    path: '/default/api/testFork2',
+    path: '/default/api/forLoopTest1',
     httpMethod: 'GET',
     headers: {
       'Content-Length': '0',
@@ -94,7 +94,7 @@ const event = {
   const ret = handler(event, null).then((value) => { 
     console.log(value);
     //now do it from cache
-    //return handler(event, null).then((value) => console.log(value));
+    return handler(event, null).then((value) => console.log(value));
   });
 
 //   setTimeout(() => {

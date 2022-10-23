@@ -8,6 +8,8 @@ class FlowExecutionModel {
         this.keySeed = 1;
         this.flowId = data.flowId;
         this.icon = data.icon;
+        this.logLevel = data.logLevel ?? 0;
+        this.ttl = data.ttl ?? (60 * 1000);
         this.color = data.color;
         this.address = data.address ?? "";
         this.name = data.name ?? "unnamed flow";
@@ -19,6 +21,16 @@ class FlowExecutionModel {
         this.entries = this.activities.filter(a => a.type === 'core:start');
         this.errorHandlers = this.activities.filter(a => a.type === 'core:catch');
         this.updateWires();
+    }
+
+    getLogLevel() {
+        if (isNaN(this.logLevel)) return 0;
+        else return Number(this.logLevel);
+    }
+
+    getTTL() {
+        if (isNaN(this.ttl)) return (60 * 1000);
+        else return Number(this.ttl);
     }
 
     getExecutionStep(address) {
@@ -96,6 +108,14 @@ class ActivityExecutionModel {
         this.executionStep = null;
     }
 
+    getJumpAddress() {
+        return new StepInfo({
+            flowId: this.flow.flowId,
+            address: this.address,
+            remote: false
+        });
+    }
+
     getOutputAddresses(index) {
         if (this.outputs.length > index) {
             const ioPort = this.outputs[index];
@@ -115,8 +135,12 @@ class ActivityExecutionModel {
         if (!this.executionStep) {
             const node = nodes[this.type] ?? null;
             return this.executionStep = new Executor(this, node, null, engine);
-        }
-        return this.executionStep;
+        } else if (this.executionStep.engine !== engine) {
+            //just replace the engine and skip preparation
+            this.executionStep.setEngine(engine);
+            return this.executionStep;
+        } else
+            return this.executionStep;
     }
 
     connect(wire) {
