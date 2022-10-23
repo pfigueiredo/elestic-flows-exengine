@@ -1,4 +1,5 @@
 const { default: axios } = require("axios");
+const { generateGetter, generateSetter } = require('./Common');
 
 const node = {};
 node.type = 'http:call';
@@ -24,30 +25,64 @@ async function httpPatch(url, data, config) {
 }
 
 node.prepare = (properties) => {
-    const preparation = { ...properties };
+    const preparation = { };
+
+    preparation.method = properties.method ?? "get";
+
+    preparation.configOrigin = properties.configOrigin ?? "";
+    preparation.configExpression = properties.configExpression ?? "";
+
+    preparation.urlOrigin = properties.urlOrigin ?? "";
+    preparation.urlExpression = properties.urlExpression ?? "";
+
+    preparation.dataOrigin = properties.dataOrigin ?? "";
+    preparation.dataExpression = properties.dataExpression ?? "";
+
+    preparation.responseVarDest = properties.elementVarDest ?? "0";
+    preparation.responseVar = properties.elementVar ?? "response";
+    
+    preparation.configGetter = generateGetter(preparation.configOrigin, preparation.configExpression);
+    preparation.urlGetter = generateGetter(preparation.urlOrigin, preparation.urlExpression);
+    preparation.dataGetter = generateGetter(preparation.dataOrigin, preparation.dataExpression);
+    preparation.responseSetter = generateSetter(preparation.responseVarDest, preparation.responseVar);
+
     return preparation;
 }
 
 node.execute = async (context, msg) => {
     const preparation = context.preparation;
-    const { method, url, options } = preparation;
+    const method = preparation.method;
+    const process = context.process;
+    const activity = context.activity;
+    const flow = context.flow;
+    const needData = (method !== "get" && method !== "delete");
 
-    //todo take care of options and configs
-    const config = {}
-    const data = msg.payload;
+    const config =  await preparation.configGetter.call({}, msg, msg.payload, activity, process, flow);
+    const url = await preparation.urlGetter.call({}, msg, msg.payload, activity, process, flow);
+    let data = null;
+
+    if (needData) 
+        data = await preparation.dataGetter.call({}, msg, msg.payload, activity, process, flow);
+
     let value = null;
 
-    switch (method) {
-        case 'GET': value = await httpGet(url, config); break
-        case 'POST': value = await httpPost(url, data, config); break
-        case 'PUT': value = await httpPut(url, data, config); break
-        case 'DELETE': value = await httpDelete(url, config); break
-        case 'PATCH': value = await httpPatch(url, data, config); break
-    }
+    if (url) {
+        switch (method) {
+            case 'get': value = await httpGet(url, config); break
+            case 'post': value = await httpPost(url, data, config); break
+            case 'put': value = await httpPut(url, data, config); break
+            case 'delete': value = await httpDelete(url, config); break
+            case 'patch': value = await httpPatch(url, data, config); break
+            default:
+                context.logger.error(`unknown method: ${method}`);
+                break;
+        }
 
-    const ret = { payload: value }
+        await preparation.responseSetter.call({}, msg, msg.payload, activity, process, flow);
+    } else
+        context.logger.error("can't do http call 'url' is null or empty")
 
-    context.continueWith(ret);
+    context.continueWith(msg);
 }
 
 exports.httpcall = node;
