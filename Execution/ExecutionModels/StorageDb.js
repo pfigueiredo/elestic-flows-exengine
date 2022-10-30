@@ -3,10 +3,17 @@ const dynamo = new AWS.DynamoDB.DocumentClient({region: "eu-west-1"});
 
 const tableName = 'elastic-flow-storage';
 
-async function SaveObject(id, obj) {
+async function SaveObject(id, obj, flowId, activityId, processId) {
     
     const key = { itemId: id };
-    const data = { itemId: id, value: obj }
+    const data = { 
+        itemId: id, 
+        value: obj,
+        flowId: flowId,
+        activityId: activityId,
+        processId: processId,
+        timeStamp: Date.now()
+    }
     
     const params = {
         Key: key,
@@ -36,8 +43,8 @@ async function getValue(key) {
     return value?.Item?.value;
 }
 
-async function setValue(key, obj) {
-    return await SaveObject(key, obj);
+async function setValue(key, obj, flowId, activityId, processId) {
+    return await SaveObject(key, obj, flowId, activityId, processId);
 }
 
 exports.getValue = getValue;

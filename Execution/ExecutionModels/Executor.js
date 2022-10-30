@@ -193,7 +193,7 @@ class ExecutionContext {
 
     async storeExecutionData(message, isDebug) {
         if (!this.$execStorage) this.$execStorage = new ExecutionStorage();
-        await this.$execStorage.storeExecutionData(
+        return await this.$execStorage.storeExecutionData(
             this.engine.processId, 
             this.engine.executionId,
             this.$flow.flowId,
@@ -206,7 +206,7 @@ class ExecutionContext {
 
     async pauseExecution(message, isDebug) {
         if (!this.$execStorage) this.$execStorage = new ExecutionStorage();
-        await this.$execStorage.storeExecutionData(
+        return await this.$execStorage.storeExecutionData(
             this.engine.processId, 
             this.engine.executionId,
             this.$flow.flowId,

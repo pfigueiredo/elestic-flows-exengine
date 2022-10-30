@@ -21,7 +21,15 @@ class ExecutionStorage {
             pending: !!pending,
         }
 
-        return await setValue(key, value);
+        await setValue(key, value);
+        return {
+            waitId: value.waitId,
+            processId: value.processId,
+            executionId: value.executionId,
+            flowId: value.flowId,
+            isDebug: value.isDebug,
+            pending: value.pending
+        };
     }
 
     async getExecutionData(waitId) {

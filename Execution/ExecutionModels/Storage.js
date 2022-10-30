@@ -1,8 +1,12 @@
+const { IoTThingsGraph } = require('aws-sdk');
 const { getValue, setValue } = require('./StorageDb');
 
 class Storage {
-    constructor(name, typeKey) {
+    constructor(name, typeKey, flowId, activityId, processId) {
         this.name = name;
+        this.flowId = flowId;
+        this.activityId = activityId;
+        this.processId = processId;
         this.typeKey = typeKey;
     }
 
@@ -12,7 +16,7 @@ class Storage {
 
     async setValue(key, value) { 
         const cKey = this.composeKey(key, this.typeKey);
-        return await setValue(cKey, value)
+        return await setValue(cKey, value, this.flowId, this.activityId, this.processId)
     }
 
     async getValue(key) { 

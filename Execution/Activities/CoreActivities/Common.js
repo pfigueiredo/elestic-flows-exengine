@@ -120,3 +120,40 @@ exports.generateSetter = (destination, expression) => {
 
 exports.getters = getters;
 exports.setters = setters;
+
+
+exports.generateJoiner = function generateJoiner(type, addresses, activity) {
+
+    const joinKey = `#A${activity.address}#_join`;
+
+    return async(msg, activity, process, flow) => {
+
+        //TODO: this is not process / thread safe...
+        //need to make this a ledger or check dynamodb transactions
+
+        const originAddress = msg.previous.address;
+        let currentValue = await process.data.getValue(joinKey);
+        let complete = true;
+
+        if (!currentValue) currentValue = {};
+        if (!currentValue.data) currentValue.data = {};
+
+        currentValue.data[originAddress] = msg;
+
+        if (addresses && addresses.length) {
+            for (let i = 0; i < addresses.length; i++) {
+                complete &&= !!(currentValue.data[addresses[i]]);
+            }
+        }
+
+        if (complete) //ready for the next join
+            currentValue.data = {};
+
+        await process.data.setValue(joinKey, currentValue);
+
+        return {
+            complete: complete,
+            data: currentValue.data
+        }
+    }
+}

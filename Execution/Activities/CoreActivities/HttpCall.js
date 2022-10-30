@@ -78,7 +78,7 @@ node.execute = async (context, msg) => {
                 break;
         }
 
-        await preparation.responseSetter.call({}, msg, msg.payload, activity, process, flow);
+        await preparation.responseSetter.call({}, msg, msg.payload, activity, process, flow, value);
     } else
         context.logger.error("can't do http call 'url' is null or empty")
 
